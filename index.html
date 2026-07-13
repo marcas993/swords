@@ -37,6 +37,7 @@
     .btn-did { background: #3498db; color: white; }
     .btn-mty { background: #27ae60; color: white; }
     .btn-mtyboh { background: #16a085; color: white; }
+    .btn-reset { background: #e74c3c; color: white; }
     .btn-back { background: #95a5a6; color: white; }
     .launcher-input {
         width: 100%; padding: 14px; margin-bottom: 15px;
@@ -55,7 +56,7 @@
     .app-title { font-size: 16px; font-weight: 700; text-transform: uppercase; }
     .header-actions { display: flex; gap: 10px; }
     .btn-header { border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; color: white; text-transform: uppercase; }
-    .btn-dl { background: #3498db; color: white; } .btn-reset { background: #e74c3c; }
+    .btn-dl { background: #3498db; color: white; } 
 
     #app-container { width: 100%; max-width: 800px; margin: 0 auto; }
     .audit-section { display: none; }
@@ -276,6 +277,17 @@
     </div>
 </div>
 
+<!-- Resume Modal -->
+<div id="resumeModal" style="display:none; position:fixed; inset:0; background:rgba(44,62,80,0.9); z-index:21000; flex-direction:column; align-items:center; justify-content:center; padding:20px;">
+    <div class="launcher-card" style="margin-bottom:0;">
+        <div class="launcher-title">Resume Audit?</div>
+        <p style="margin-bottom:20px; font-size:15px; color:#34495e;">An existing audit was found. Do you want to edit it or reset and start fresh?</p>
+        <button class="btn-launch btn-mty" onclick="handleResumeChoice('edit')">EDIT</button>
+        <button class="btn-launch btn-reset" onclick="handleResumeChoice('reset')">RESET</button>
+        <button class="btn-launch btn-back" onclick="document.getElementById('resumeModal').style.display='none'">Cancel</button>
+    </div>
+</div>
+
 <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
 
 <div id="loadingOverlay" style="display:none;"><div id="loadingText">BOOTING AUDIT ENGINE...</div></div>
@@ -346,28 +358,28 @@
 
     const DATA_DID = [
         { id: 0, title: "General / BOH Audit", rows: [
-            ["GEN", "Floor clear of dirt"], ["GEN", "Carpet vacuumed"], ["GEN", "Windows cleaned in/out"], ["GEN", "Front entrance cleaned"], ["GEN", "Entrance mat hoovered"], ["GEN", "Bins emptied"], ["GEN", "Cash desk clean/tidy"],
+            ["CLEAN", "Floor clear of dirt"], ["CLEAN", "Carpet vacuumed"], ["CLEAN", "Windows cleaned in/out"], ["CLEAN", "Front entrance cleaned"], ["CLEAN", "Entrance mat hoovered"], ["CLEAN", "Bins emptied"], ["CLEAN", "Cash desk clean/tidy"],
             ["BOH", "Canteen clean & tidy"], ["BOH", "Toilets clean & tidy"], ["BOH", "Loading area clean/tidy"], ["BOH", "Customer collections current"], ["BOH", "Open stock bubblewrapped"], ["BOH", "Repair section tidy/current"]
         ]},
         { id: 1, title: "Smalls Guideline", rows: [
             ["PRICE", "Price ticket cut straight"], ["PRICE", "Price ticket right of product"], ["PRICE", "No broken holders"], ["PRICE", "Tickets on edge of shelf"], ["PRICE", "Gun labels top right"],
             ["MERCH", "Promo in ticket holder"], ["MERCH", "Promo in correct position"], ["MERCH", "Supplier stickers removed"], ["MERCH", "Smalls in price order"], ["MERCH", "Stock to height & front"], ["MERCH", "Boxed stock lined up"], ["MERCH", "End caps dual displayed"], ["MERCH", "Essentials in place/priced"],
-            ["HOUSE", "Product clean (no dust)"], ["HOUSE", "Shelves free of dust/gum"], ["HOUSE", "Barcodes hidden"], ["HOUSE", "Box product free from dust"], ["HOUSE", "Floor area vacuumed"]
+            ["CLEAN", "Product clean (no dust)"], ["CLEAN", "Shelves free of dust/gum"], ["CLEAN", "Barcodes hidden"], ["CLEAN", "Box product free from dust"], ["CLEAN", "Floor area vacuumed"]
         ]},
         { id: 2, title: "TV & Audio Audit", rows: [
             ["PRICE", "Price ticket cut straight"], ["PRICE", "Ticket in correct position"], ["PRICE", "No broken holders"], ["PRICE", "Tickets on edge of shelving"], ["PRICE", "Energy Label Correct Pos"], ["PRICE", "Energy Label Correct Size"],
             ["MERCH", "All stickers removed"], ["MERCH", "Essentials in place/priced"], ["MERCH", "Product Price/Size Logic"], ["MERCH", "Product fully cleaned"], ["MERCH", "Volume adjusted correctly"], ["MERCH", "TVs turned on/same content"], ["MERCH", "TV out of ECO mode"],
-            ["HOUSE", "Shelves free of dust"], ["HOUSE", "TV stands free of dust"], ["HOUSE", "Cables neat and tidy"], ["HOUSE", "Box stock lined up"], ["HOUSE", "Floor cleaned/vacuumed"]
+            ["CLEAN", "Shelves free of dust"], ["CLEAN", "TV stands free of dust"], ["CLEAN", "Cables neat and tidy"], ["CLEAN", "Box stock lined up"], ["CLEAN", "Floor cleaned/vacuumed"]
         ]},
         { id: 3, title: "Digi Audit", rows: [
             ["PRICE", "Ticket in holder right"], ["PRICE", "Ticket cut straight"], ["PRICE", "Ticket correct position"],
             ["MERCH", "Promo in ticket holder"], ["MERCH", "Supplier stickers removed"], ["MERCH", "Essentials in place/priced"], ["MERCH", "Digi tables neat/tidy"], ["MERCH", "Bags out of plastic wraps"], ["MERCH", "Product in price/size logic"], ["MERCH", "Laptops on/screensaver"], ["MERCH", "Monitors playing demo"], ["MERCH", "Sleep mode turned off"],
-            ["HOUSE", "Product cleaned"], ["HOUSE", "Shelves free of dust"], ["HOUSE", "Barcodes hidden"], ["HOUSE", "Floor cleaned/vacuumed"]
+            ["CLEAN", "All digi tables/shelves/bays dust free; Laptops, tablets, phones clean & fingerprint free"], ["CLEAN", "Barcodes hidden"], ["CLEAN", "Floor cleaned/vacuumed"]
         ]},
         { id: 4, title: "Whites Audit", rows: [
             ["FREE", "Price ticket cut/pos ok"], ["FREE", "Energy Label Correct Size"], ["FREE", "Stickers removed"], ["FREE", "Price/Size logic"], ["FREE", "Info in grey bags"],
             ["INT", "Ticket laminated DL size"], ["INT", "Cooling: label inside door"], ["INT", "Cooking: label inside oven"], ["INT", "Hobs: top right corner"], ["INT", "Washers: label inside door"], ["INT", "Energy label laminated"], ["INT", "Promo position correct"],
-            ["HOUSE", "Product fully cleaned"], ["HOUSE", "Barcodes hidden"], ["HOUSE", "Floor cleaned/vacuumed"]
+            ["CLEAN", "Product fully cleaned"], ["CLEAN", "Barcodes hidden"], ["CLEAN", "Floor cleaned/vacuumed"]
         ]}
     ];
 
@@ -375,10 +387,10 @@
         { id: 0, title: "General / BOH Audit", rows: [
             ["MERCH", "Front Bays (Tills): Fully Stocked, Faced off & Priced"],
             ["MERCH", "Baskets: Full of stock, Faced off & Correct Price"],
-            ["GEN", "Sales Counter: No Stock, No Rubbish, No Personal Items"],
-            ["GEN", "Entrance & Walkways (Mat hoovered, Windows clean)"],
-            ["HOUSE", "All Shop Floor Bins Emptied"],
-            ["HOUSE", "Bays: Clean & No Dirt (Especially Bottom Shelves)"],
+            ["CLEAN", "Sales Counter: No Stock, No Rubbish, No Personal Items"],
+            ["CLEAN", "Entrance & Walkways (Mat hoovered, Windows clean)"],
+            ["CLEAN", "All Shop Floor Bins Emptied"],
+            ["CLEAN", "Bays: Clean & No Dirt (Especially Bottom Shelves)"],
             ["BOH", "Canteen: Clean, Tidy & Bins Emptied"],
             ["BOH", "Toilets: Male Clean, Stocked & Bins Emptied"],
             ["BOH", "Toilets: Female Clean, Stocked & Bins Emptied"],
@@ -393,8 +405,8 @@
             ["MERCH", "Floor stacks - Stocked, Safe and Priced"],
             ["MERCH", "Stock Availability (No Gaps, Pulled to front)"],
             ["MERCH", "End Caps & Display Logic (Dual displayed if applicable)"],
-            ["HOUSE", "Product & Shelves Clean (No Dust, Gum, or Debris)"],
-            ["HOUSE", "Floor Standards (Vacuumed & Clear of hazards)"]
+            ["CLEAN", "Product & Shelves Clean (No Dust, Gum, or Debris)"],
+            ["CLEAN", "Floor Standards (Vacuumed & Clear of hazards)"]
         ]},
         { id: 2, title: "TV & Audio Audit", rows: [
             ["PRICE", "Ticketing Standards (Cut straight, Position correct, Holders intact)"],
@@ -404,8 +416,8 @@
             ["MERCH", "No gaps on display or boxed stock"],
             ["MERCH", "Demo Ready (On, Same Content, Volume leveled, Non-Eco)"],
             ["MERCH", "Merchandising Standard (Stickers removed, Logic correct)"],
-            ["HOUSE", "Dust Free (Screens, Stands, Shelves)"],
-            ["HOUSE", "Cable Management (Neat, Tidy, Tied back)"]
+            ["CLEAN", "Dust Free (Screens, Stands, Shelves)"],
+            ["CLEAN", "Cable Management (Neat, Tidy, Tied back)"]
         ]},
         { id: 3, title: "Digi Audit", rows: [
             ["PRICE", "Ticketing Standards (Cut straight, Position correct)"],
@@ -414,7 +426,7 @@
             ["MERCH", "Accessories Standard (Priced, Gun full, Faced off)"],
             ["MERCH", "Stock Presentation (Bags unwrapped, Logic correct)"],
             ["MERCH", "No gaps on display or boxed stock"],
-            ["HOUSE", "Hygiene (Screens fingerprint-free, Keys dusted)"]
+            ["CLEAN", "All digi tables/shelves/bays dust free; Laptops, tablets, phones clean & fingerprint free"]
         ]},
         { id: 4, title: "Whites Audit", rows: [
             ["PRICE", "Ticketing Standards (Cut straight, Position correct, Laminated)"],
@@ -422,16 +434,16 @@
             ["PRICE", "Energy Label Compliance (Inside door or Oven)"],
             ["MERCH", "Unit presentation (Stickers removed, Manuals and extras in grey (dpd) bag)"],
             ["MERCH", "Gaps filled"],
-            ["HOUSE", "Hobs & Hoods Cleaned (Glass wiped, Buttons clean)"],
-            ["HOUSE", "Freestanding Cookers Cleaned (Inside & Out)"],
-            ["HOUSE", "Laundry Cleaned (No Gummy Marks, Doors wiped)"],
-            ["HOUSE", "Refrigeration Cleaned (Doors & Handles wiped)"],
-            ["HOUSE", "Built-in Ovens Cleaned (Glass polished, Fronts clean)"]
+            ["CLEAN", "Hobs & Hoods Cleaned (Glass wiped, Buttons clean)"],
+            ["CLEAN", "Freestanding Cookers Cleaned (Inside & Out)"],
+            ["CLEAN", "Laundry Cleaned (No Gummy Marks, Doors wiped)"],
+            ["CLEAN", "Refrigeration Cleaned (Doors & Handles wiped)"],
+            ["CLEAN", "Built-in Ovens Cleaned (Glass polished, Fronts clean)"]
         ]}
     ];
 
     // === MTY Core Compliance + BOH ===
-    // BOH section is FIRST. General has 3 BOH items removed and is renamed.
+    // BOH section is FIRST.
     const DATA_MTYBOH = [
         { id: 0, title: "Back of House", banner: "TO BE KEPT IN SEPARATE FOLDER", rows: [
             ["BOH", "Transfers", "red"],
@@ -446,23 +458,23 @@
             ["BOH", "Transfer discrepancies actioned correctly"],
             ["BOH", "No empty boxes / rubbish on the floor"],
             ["", "Duty Manager Only — Completed by COB", "subheader"],
-            ["DM", "Transfers completed and outstanding actioned", "dmonly"],
-            ["DM", "An Post completed and outstanding actioned", "dmonly"],
-            ["DM", "CCS completed and up to date", "dmonly"],
-            ["DM", "Whites organised", "dmonly"],
-            ["DM", "Smalls organised", "dmonly"],
-            ["DM", "Digi accessories organised", "dmonly"],
-            ["DM", "Downstairs clean and tidy", "dmonly"],
-            ["DM", "Upstairs clean and tidy", "dmonly"],
-            ["DM", "No plastic on boxed stock or empty boxes", "dmonly"]
+            ["MGR", "Transfers completed and outstanding actioned", "dmonly"],
+            ["MGR", "An Post completed and outstanding actioned", "dmonly"],
+            ["MGR", "CCS completed and up to date", "dmonly"],
+            ["MGR", "Whites organised", "dmonly"],
+            ["MGR", "Smalls organised", "dmonly"],
+            ["MGR", "Digi accessories organised", "dmonly"],
+            ["MGR", "Downstairs clean and tidy", "dmonly"],
+            ["MGR", "Upstairs clean and tidy", "dmonly"],
+            ["MGR", "No plastic on boxed stock or empty boxes", "dmonly"]
         ]},
         { id: 1, title: "General / Front of the Store", rows: [
             ["MERCH", "Front Bays (Tills): Fully Stocked, Faced off & Priced"],
             ["MERCH", "Baskets: Full of stock, Faced off & Correct Price"],
-            ["GEN", "Sales Counter: No Stock, No Rubbish, No Personal Items"],
-            ["GEN", "Entrance & Walkways (Mat hoovered, Windows clean)"],
-            ["HOUSE", "All Shop Floor Bins Emptied"],
-            ["HOUSE", "Bays: Clean & No Dirt (Especially Bottom Shelves)"],
+            ["CLEAN", "Sales Counter: No Stock, No Rubbish, No Personal Items"],
+            ["CLEAN", "Entrance & Walkways (Mat hoovered, Windows clean)"],
+            ["CLEAN", "All Shop Floor Bins Emptied"],
+            ["CLEAN", "Bays: Clean & No Dirt (Especially Bottom Shelves)"],
             ["BOH", "Canteen: Clean, Tidy & Bins Emptied"],
             ["BOH", "Toilets: Male Clean, Stocked & Bins Emptied"],
             ["BOH", "Toilets: Female Clean, Stocked & Bins Emptied"]
@@ -494,23 +506,67 @@
         };
     }
 
-    function selectMode(mode) {
+    async function selectMode(mode) {
+        pendingMode = mode;
+        const tempStore = localforage.createInstance({ name: 'AuditApp', storeName: mode });
+        const val = await tempStore.getItem('auditData');
+        
+        // If valid populated data is found, show EDIT / RESET prompt
+        if (val && (
+            (val.ticks && Object.keys(val.ticks).length > 0) || 
+            (val.notes && Object.keys(val.notes).length > 0) ||
+            (val.mainNotes && Object.keys(val.mainNotes).length > 0) ||
+            (val.dutyManager && val.dutyManager.length > 0)
+        )) {
+            document.getElementById('resumeModal').style.display = 'flex';
+        } else {
+            // No existing valid data, proceed directly to prompt for DM
+            promptForDmOrProceed(mode, true);
+        }
+    }
+
+    async function handleResumeChoice(choice) {
+        document.getElementById('resumeModal').style.display = 'none';
+        const tempStore = localforage.createInstance({ name: 'AuditApp', storeName: pendingMode });
+        
+        if (choice === 'reset') {
+            await tempStore.clear();
+            localStorage.removeItem('audit_idx_' + pendingMode);
+            promptForDmOrProceed(pendingMode, true);
+        } else {
+            // EDIT flow - fetch existing DM data
+            const savedData = await tempStore.getItem('auditData');
+            const savedDm = savedData && savedData.dutyManager ? savedData.dutyManager : '';
+            
+            if (pendingMode === 'did') {
+                proceedToMode('did', '');
+            } else if (savedDm) {
+                // Pre-fill / bypass the launcher with existing name
+                proceedToMode(pendingMode, savedDm);
+            } else {
+                promptForDmOrProceed(pendingMode, false);
+            }
+        }
+    }
+
+    function promptForDmOrProceed(mode, isFresh) {
         if (mode === 'did') {
             proceedToMode('did', '');
             return;
         }
-        // Both MTY modes need a duty manager name
-        pendingMode = mode;
+
         const card = document.getElementById('launcherCard');
         const title = mode === 'mtyboh' ? 'Duty Manager (MTY + BOH)' : 'Duty Manager';
         const btnClass = mode === 'mtyboh' ? 'btn-mtyboh' : 'btn-mty';
+        
         card.innerHTML = `
             <div class="launcher-title">${title}</div>
             <input type="text" id="dutyMgrInput" class="launcher-input" placeholder="Enter Duty Manager Name" autocomplete="off">
             <button class="btn-launch ${btnClass}" onclick="confirmMtyMode()">Continue</button>
             <button class="btn-launch btn-back" onclick="location.reload()">Back</button>
         `;
-        document.getElementById('lastPdfSection').style.display = 'none'; // hide last pdf when entering DM details
+        document.getElementById('lastPdfSection').style.display = 'none'; 
+        
         setTimeout(() => {
             const inp = document.getElementById('dutyMgrInput');
             if (inp) inp.focus();
