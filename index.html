@@ -16,6 +16,13 @@
         padding-bottom: 120px; overscroll-behavior-y: none;
     }
 
+    /* === LOGIN OVERLAY === */
+    #loginOverlay {
+        position: fixed; inset: 0; background: #2c3e50; z-index: 30000;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        padding: 20px;
+    }
+
     /* === LAUNCHER SCREEN === */
     #launcher {
         position: fixed; inset: 0; background: #2c3e50; z-index: 20000;
@@ -41,7 +48,7 @@
     .launcher-input {
         width: 100%; padding: 14px; margin-bottom: 15px;
         border: 1px solid #dfe6e9; border-radius: 8px; font-size: 16px;
-        font-family: inherit;
+        font-family: inherit; text-align: center;
     }
 
     /* === MAIN APP (Hidden by default) === */
@@ -257,6 +264,15 @@
 
 <body>
 
+<!-- Password Protection Overlay -->
+<div id="loginOverlay" style="display:none;">
+    <div class="launcher-card">
+        <div class="launcher-title">Store Access</div>
+        <input type="password" id="authPwdInput" class="launcher-input" placeholder="Enter Password" autocomplete="off">
+        <button class="btn-launch btn-mtyboh" onclick="verifyAccess()">Unlock</button>
+    </div>
+</div>
+
 <div id="launcher">
     <div class="launcher-card" id="launcherCard">
         <div class="launcher-title">Select Audit Type</div>
@@ -300,12 +316,25 @@
 
 <script>
     // ==========================================
-    // 0. GLOBAL STORAGE FOR LAST PDF
+    // 0. AUTHENTICATION LOGIC & GLOBAL STORAGE
     // ==========================================
     const globalStore = localforage.createInstance({ name: 'AuditApp_Global' });
     let lastPdfData = null;
 
     document.addEventListener('DOMContentLoaded', async () => {
+        // 1. Check if device is already unlocked
+        if (localStorage.getItem('app_unlocked') !== 'true') {
+            document.getElementById('loginOverlay').style.display = 'flex';
+        } else {
+            document.getElementById('loginOverlay').style.display = 'none';
+        }
+
+        // Allow pressing "Enter" on password field
+        document.getElementById('authPwdInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') verifyAccess();
+        });
+
+        // 2. Load Last PDF Data
         try {
             lastPdfData = await globalStore.getItem('lastGeneratedPdf');
             if (lastPdfData) {
@@ -315,6 +344,26 @@
             }
         } catch(e) { console.error("Error loading last PDF meta", e); }
     });
+
+    async function verifyAccess() {
+        const input = document.getElementById('authPwdInput').value;
+        
+        // Convert the input into a cryptographic SHA-256 fingerprint
+        const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+        // This is the SHA-256 hash of "swords04"
+        const targetHash = "20d65b79e28fdfca9ffcf9e31d4da3d1797c55cb0dd25ea451890fc222d41b65";
+
+        if (hashHex === targetHash) {
+            localStorage.setItem('app_unlocked', 'true');
+            document.getElementById('loginOverlay').style.display = 'none';
+        } else {
+            alert('Incorrect Password');
+            document.getElementById('authPwdInput').value = '';
+        }
+    }
 
     function downloadLastPdf() {
         if (!lastPdfData || !lastPdfData.blob) return;
