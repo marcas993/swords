@@ -353,7 +353,8 @@
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-        const targetHash = "1b701bf6cdcf89e2d1de34bfc348a84386e1df94270c6487c2c86ac0c91bda9";
+        const targetHash = "1b701bf6cdcf89e2d1de34bfc348a84386e1df94270c6487c2c86ac0c91bda90
+                                                                   ^";
 
         if (hashHex === targetHash) {
             localStorage.setItem('app_unlocked', 'true');
