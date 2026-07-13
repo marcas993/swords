@@ -20,11 +20,12 @@
     #launcher {
         position: fixed; inset: 0; background: #2c3e50; z-index: 20000;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
-        padding: 20px;
+        padding: 20px; overflow-y: auto;
     }
     .launcher-card {
         background: white; width: 100%; max-width: 400px; padding: 30px;
         border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); text-align: center;
+        margin-bottom: 20px;
     }
     .launcher-title { font-size: 22px; font-weight: 800; color: #2c3e50; margin-bottom: 25px; text-transform: uppercase; }
     .btn-launch {
@@ -54,7 +55,7 @@
     .app-title { font-size: 16px; font-weight: 700; text-transform: uppercase; }
     .header-actions { display: flex; gap: 10px; }
     .btn-header { border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer; color: white; text-transform: uppercase; }
-    .btn-dl { background: #3498db; } .btn-reset { background: #e74c3c; }
+    .btn-dl { background: #3498db; color: white; } .btn-reset { background: #e74c3c; }
 
     #app-container { width: 100%; max-width: 800px; margin: 0 auto; }
     .audit-section { display: none; }
@@ -263,6 +264,16 @@
         <button class="btn-launch btn-mty" onclick="selectMode('mty')">MTY Core Compliance</button>
         <button class="btn-launch btn-mtyboh" onclick="selectMode('mtyboh')">MTY Core Compliance + BOH</button>
     </div>
+
+    <!-- Last PDF Generated Card -->
+    <div id="lastPdfSection" class="launcher-card" style="display:none; margin-top: 10px;">
+        <div class="launcher-title" style="font-size:16px;">Last Generated Report</div>
+        <div id="lastPdfMeta" style="margin-bottom: 15px; font-size: 13px; font-weight: 600; color: #34495e; white-space: pre-wrap; line-height: 1.4;"></div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn-launch btn-dl" style="margin:0; padding:12px; font-size:14px;" onclick="downloadLastPdf()">Download</button>
+            <button class="btn-launch btn-mtyboh" style="margin:0; padding:12px; font-size:14px;" id="shareLastPdfBtn" onclick="shareLastPdf()">Share</button>
+        </div>
+    </div>
 </div>
 
 <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
@@ -278,7 +289,7 @@
     </div>
 
     <div id="app-container">
-        </div>
+    </div>
 
     <div class="nav-bar">
         <button class="btn btn-prev" onclick="changeSection(-1)">Back</button>
@@ -288,6 +299,47 @@
 </div>
 
 <script>
+    // ==========================================
+    // 0. GLOBAL STORAGE FOR LAST PDF
+    // ==========================================
+    const globalStore = localforage.createInstance({ name: 'AuditApp_Global' });
+    let lastPdfData = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            lastPdfData = await globalStore.getItem('lastGeneratedPdf');
+            if (lastPdfData) {
+                document.getElementById('lastPdfSection').style.display = 'block';
+                document.getElementById('lastPdfMeta').innerText = `Report: ${lastPdfData.filename}\nGenerated: ${lastPdfData.date}\nDuty Manager: ${lastPdfData.dm || 'N/A'}`;
+                if (!navigator.canShare) document.getElementById('shareLastPdfBtn').style.display = 'none';
+            }
+        } catch(e) { console.error("Error loading last PDF meta", e); }
+    });
+
+    function downloadLastPdf() {
+        if (!lastPdfData || !lastPdfData.blob) return;
+        const url = URL.createObjectURL(lastPdfData.blob);
+        const a = document.createElement('a'); a.href = url; a.download = lastPdfData.filename; a.click();
+    }
+
+    async function shareLastPdf() {
+        if (!lastPdfData || !lastPdfData.blob) return;
+        const file = new File([lastPdfData.blob], lastPdfData.filename, { type: 'application/pdf' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({
+                    files: [file],
+                    title: 'Audit Report',
+                    text: `Attached is the previous audit report (${lastPdfData.date})`
+                });
+            } catch (e) {
+                console.log('Share cancelled', e);
+            }
+        } else {
+            alert("Sharing not supported on this device. Please use download.");
+        }
+    }
+
     // ==========================================
     // 1. DATA DEFINITIONS
     // ==========================================
@@ -338,7 +390,7 @@
             ["PRICE", "Ticketing Standards (Cut straight, Position correct, Holders intact)"],
             ["PRICE", "Pricing Accuracy (Gun labels correct, Edge labels present)"],
             ["PRICE", "No Missing Prices (All products priced)"],
-            ["MERCH", "Floor Stacks (Microwaves/Fans/Airfryers) - Stocked, Safe & Priced"],
+            ["MERCH", "Floor stacks - Stocked, Safe and Priced"],
             ["MERCH", "Stock Availability (No Gaps, Pulled to front)"],
             ["MERCH", "End Caps & Display Logic (Dual displayed if applicable)"],
             ["HOUSE", "Product & Shelves Clean (No Dust, Gum, or Debris)"],
@@ -349,6 +401,7 @@
             ["PRICE", "All TVs & Audio Units Priced (No missing tickets)"],
             ["PRICE", "Energy Label Compliance (Correct Position & Size)"],
             ["MERCH", "TV Stacks Full & Size Logic Correct"],
+            ["MERCH", "No gaps on display or boxed stock"],
             ["MERCH", "Demo Ready (On, Same Content, Volume leveled, Non-Eco)"],
             ["MERCH", "Merchandising Standard (Stickers removed, Logic correct)"],
             ["HOUSE", "Dust Free (Screens, Stands, Shelves)"],
@@ -360,14 +413,15 @@
             ["MERCH", "Demo Ready (Laptops ON, Screensavers, No Sleep Mode)"],
             ["MERCH", "Accessories Standard (Priced, Gun full, Faced off)"],
             ["MERCH", "Stock Presentation (Bags unwrapped, Logic correct)"],
+            ["MERCH", "No gaps on display or boxed stock"],
             ["HOUSE", "Hygiene (Screens fingerprint-free, Keys dusted)"]
         ]},
         { id: 4, title: "Whites Audit", rows: [
             ["PRICE", "Ticketing Standards (Cut straight, Position correct, Laminated)"],
             ["PRICE", "No Missing Prices (All Units on floor priced)"],
             ["PRICE", "Energy Label Compliance (Inside door or Oven)"],
-            ["MERCH", "Manuals & Extras in Grey Bags"],
-            ["MERCH", "Unit Presentation (Stickers removed, Gaps filled)"],
+            ["MERCH", "Unit presentation (Stickers removed, Manuals and extras in grey (dpd) bag)"],
+            ["MERCH", "Gaps filled"],
             ["HOUSE", "Hobs & Hoods Cleaned (Glass wiped, Buttons clean)"],
             ["HOUSE", "Freestanding Cookers Cleaned (Inside & Out)"],
             ["HOUSE", "Laundry Cleaned (No Gummy Marks, Doors wiped)"],
@@ -387,7 +441,9 @@
             ["BOH", "Loading bay clean/tidy, no stock around the lift"],
             ["BOH", "Stockroom organised / products not mixed up"],
             ["BOH", "Stock put away in right places"],
-            ["BOH", "No plastic on box stock"],
+            ["BOH", "Purchase orders booked in"],
+            ["BOH", "Credits up to date"],
+            ["BOH", "Transfer discrepancies actioned correctly"],
             ["BOH", "No empty boxes / rubbish on the floor"],
             ["", "Duty Manager Only — Completed by COB", "subheader"],
             ["DM", "Transfers completed and outstanding actioned", "dmonly"],
@@ -454,6 +510,7 @@
             <button class="btn-launch ${btnClass}" onclick="confirmMtyMode()">Continue</button>
             <button class="btn-launch btn-back" onclick="location.reload()">Back</button>
         `;
+        document.getElementById('lastPdfSection').style.display = 'none'; // hide last pdf when entering DM details
         setTimeout(() => {
             const inp = document.getElementById('dutyMgrInput');
             if (inp) inp.focus();
@@ -831,6 +888,7 @@
             }
         });
 
+        const generatedDate = new Date().toLocaleString('en-GB');
         const dateStr = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
         const modeLabel =
             appMode === 'did' ? 'DID_Standard' :
@@ -856,6 +914,17 @@
                 grid.classList.remove('p-1', 'p-2');
             });
             showSection(currentSection);
+
+            // Save PDF info globally so Launcher can access it next time
+            try {
+                await globalStore.setItem('lastGeneratedPdf', {
+                    blob: pdfBlob,
+                    date: generatedDate,
+                    dm: auditData.dutyManager,
+                    filename: filename
+                });
+            } catch(err) { console.error("Could not save PDF meta to storage", err); }
+
             document.getElementById('loadingOverlay').style.display = 'none';
 
             const file = new File([pdfBlob], filename, { type: 'application/pdf' });
