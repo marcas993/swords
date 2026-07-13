@@ -16,13 +16,6 @@
         padding-bottom: 120px; overscroll-behavior-y: none;
     }
 
-    /* === LOGIN OVERLAY === */
-    #loginOverlay {
-        position: fixed; inset: 0; background: #2c3e50; z-index: 30000;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        padding: 20px;
-    }
-
     /* === LAUNCHER SCREEN === */
     #launcher {
         position: fixed; inset: 0; background: #2c3e50; z-index: 20000;
@@ -48,7 +41,7 @@
     .launcher-input {
         width: 100%; padding: 14px; margin-bottom: 15px;
         border: 1px solid #dfe6e9; border-radius: 8px; font-size: 16px;
-        font-family: inherit; text-align: center;
+        font-family: inherit;
     }
 
     /* === MAIN APP (Hidden by default) === */
@@ -264,15 +257,6 @@
 
 <body>
 
-<!-- Password Protection Overlay -->
-<div id="loginOverlay" style="display:none;">
-    <div class="launcher-card">
-        <div class="launcher-title">Store Access</div>
-        <input type="password" id="authPwdInput" class="launcher-input" placeholder="Enter Password" autocomplete="off">
-        <button class="btn-launch btn-mtyboh" onclick="verifyAccess()">Unlock</button>
-    </div>
-</div>
-
 <div id="launcher">
     <div class="launcher-card" id="launcherCard">
         <div class="launcher-title">Select Audit Type</div>
@@ -316,25 +300,12 @@
 
 <script>
     // ==========================================
-    // 0. AUTHENTICATION LOGIC & GLOBAL STORAGE
+    // 0. GLOBAL STORAGE FOR LAST PDF
     // ==========================================
     const globalStore = localforage.createInstance({ name: 'AuditApp_Global' });
     let lastPdfData = null;
 
     document.addEventListener('DOMContentLoaded', async () => {
-        // 1. Check if device is already unlocked
-        if (localStorage.getItem('app_unlocked') !== 'true') {
-            document.getElementById('loginOverlay').style.display = 'flex';
-        } else {
-            document.getElementById('loginOverlay').style.display = 'none';
-        }
-
-        // Allow pressing "Enter" on password field
-        document.getElementById('authPwdInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') verifyAccess();
-        });
-
-        // 2. Load Last PDF Data
         try {
             lastPdfData = await globalStore.getItem('lastGeneratedPdf');
             if (lastPdfData) {
@@ -344,26 +315,6 @@
             }
         } catch(e) { console.error("Error loading last PDF meta", e); }
     });
-
-    async function verifyAccess() {
-        const rawInput = document.getElementById('authPwdInput').value;
-        const cleanInput = rawInput.trim().toLowerCase();
-        
-        const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cleanInput));
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-        const targetHash = "1b701bf6cdcf89e2d1de34bfc348a84386e1df94270c6487c2c86ac0c91bda90
-                                                                   ^";
-
-        if (hashHex === targetHash) {
-            localStorage.setItem('app_unlocked', 'true');
-            document.getElementById('loginOverlay').style.display = 'none';
-        } else {
-            alert('Incorrect Password');
-            document.getElementById('authPwdInput').value = '';
-        }
-    }
 
     function downloadLastPdf() {
         if (!lastPdfData || !lastPdfData.blob) return;
@@ -480,6 +431,7 @@
     ];
 
     // === MTY Core Compliance + BOH ===
+    // BOH section is FIRST. General has 3 BOH items removed and is renamed.
     const DATA_MTYBOH = [
         { id: 0, title: "Back of House", banner: "TO BE KEPT IN SEPARATE FOLDER", rows: [
             ["BOH", "Transfers", "red"],
@@ -547,6 +499,7 @@
             proceedToMode('did', '');
             return;
         }
+        // Both MTY modes need a duty manager name
         pendingMode = mode;
         const card = document.getElementById('launcherCard');
         const title = mode === 'mtyboh' ? 'Duty Manager (MTY + BOH)' : 'Duty Manager';
@@ -557,7 +510,7 @@
             <button class="btn-launch ${btnClass}" onclick="confirmMtyMode()">Continue</button>
             <button class="btn-launch btn-back" onclick="location.reload()">Back</button>
         `;
-        document.getElementById('lastPdfSection').style.display = 'none';
+        document.getElementById('lastPdfSection').style.display = 'none'; // hide last pdf when entering DM details
         setTimeout(() => {
             const inp = document.getElementById('dutyMgrInput');
             if (inp) inp.focus();
@@ -617,10 +570,12 @@
             sec.rows.forEach((row) => {
                 const rowType = row[2] || 'normal';
 
+                // Caption row spans all columns
                 if (rowType === 'caption') {
                     html += `<tr class="row-caption"><td colspan="5">${row[1]}</td></tr>`;
                     return;
                 }
+                // Subheader row spans all columns
                 if (rowType === 'subheader') {
                     html += `<tr class="row-subheader"><td colspan="5">${row[1]}</td></tr>`;
                     return;
@@ -678,6 +633,7 @@
         const val = await localforage.getItem('auditData');
         if (val) {
             auditData = Object.assign(getDefaultData(), val);
+            // Make sure photos array length matches current mode's section count
             while (auditData.photos.length < totalSections) auditData.photos.push([]);
         } else {
             auditData = getDefaultData();
@@ -744,7 +700,7 @@
 
     function pick(el, isYes) {
         const row = el.closest("tr");
-        if (row.classList.contains('row-dmonly')) return;
+        if (row.classList.contains('row-dmonly')) return; // safety: DM-only rows are pen-only
         const secIdx = Array.from(document.querySelectorAll('.audit-section')).indexOf(row.closest('.audit-section'));
         const rowIdx = Array.from(row.parentElement.children).indexOf(row);
         row.querySelectorAll(".choice").forEach(c => c.classList.remove("active"));
@@ -867,6 +823,7 @@
     function applyDataToDOM() {
         document.querySelectorAll('.audit-section').forEach((sec, secIdx) => {
             sec.querySelectorAll('tbody tr').forEach((row, rowIdx) => {
+                // Skip caption/subheader rows (no ticks/notes/photos)
                 if (row.classList.contains('row-caption') || row.classList.contains('row-subheader')) return;
 
                 const tick = auditData.ticks[`${secIdx}-${rowIdx}`];
@@ -958,6 +915,7 @@
             });
             showSection(currentSection);
 
+            // Save PDF info globally so Launcher can access it next time
             try {
                 await globalStore.setItem('lastGeneratedPdf', {
                     blob: pdfBlob,
