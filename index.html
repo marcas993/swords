@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Audit Launcher ©MTY Airside</title>
+<title>Audit Launcher ©MTY Finglas</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
 
@@ -346,14 +346,13 @@
     });
 
     async function verifyAccess() {
-        const input = document.getElementById('authPwdInput').value;
+        const rawInput = document.getElementById('authPwdInput').value;
+        const cleanInput = rawInput.trim().toLowerCase();
         
-        // Convert the input into a cryptographic SHA-256 fingerprint
-        const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+        const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cleanInput));
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-        // This is the SHA-256 hash of "password"
         const targetHash = "20d65b79e28fdfca9ffcf9e31d4da3d1797c55cb0dd25ea451890fc222d41b65";
 
         if (hashHex === targetHash) {
@@ -480,7 +479,6 @@
     ];
 
     // === MTY Core Compliance + BOH ===
-    // BOH section is FIRST. General has 3 BOH items removed and is renamed.
     const DATA_MTYBOH = [
         { id: 0, title: "Back of House", banner: "TO BE KEPT IN SEPARATE FOLDER", rows: [
             ["BOH", "Transfers", "red"],
@@ -548,7 +546,6 @@
             proceedToMode('did', '');
             return;
         }
-        // Both MTY modes need a duty manager name
         pendingMode = mode;
         const card = document.getElementById('launcherCard');
         const title = mode === 'mtyboh' ? 'Duty Manager (MTY + BOH)' : 'Duty Manager';
@@ -559,7 +556,7 @@
             <button class="btn-launch ${btnClass}" onclick="confirmMtyMode()">Continue</button>
             <button class="btn-launch btn-back" onclick="location.reload()">Back</button>
         `;
-        document.getElementById('lastPdfSection').style.display = 'none'; // hide last pdf when entering DM details
+        document.getElementById('lastPdfSection').style.display = 'none';
         setTimeout(() => {
             const inp = document.getElementById('dutyMgrInput');
             if (inp) inp.focus();
@@ -619,12 +616,10 @@
             sec.rows.forEach((row) => {
                 const rowType = row[2] || 'normal';
 
-                // Caption row spans all columns
                 if (rowType === 'caption') {
                     html += `<tr class="row-caption"><td colspan="5">${row[1]}</td></tr>`;
                     return;
                 }
-                // Subheader row spans all columns
                 if (rowType === 'subheader') {
                     html += `<tr class="row-subheader"><td colspan="5">${row[1]}</td></tr>`;
                     return;
@@ -682,7 +677,6 @@
         const val = await localforage.getItem('auditData');
         if (val) {
             auditData = Object.assign(getDefaultData(), val);
-            // Make sure photos array length matches current mode's section count
             while (auditData.photos.length < totalSections) auditData.photos.push([]);
         } else {
             auditData = getDefaultData();
@@ -749,7 +743,7 @@
 
     function pick(el, isYes) {
         const row = el.closest("tr");
-        if (row.classList.contains('row-dmonly')) return; // safety: DM-only rows are pen-only
+        if (row.classList.contains('row-dmonly')) return;
         const secIdx = Array.from(document.querySelectorAll('.audit-section')).indexOf(row.closest('.audit-section'));
         const rowIdx = Array.from(row.parentElement.children).indexOf(row);
         row.querySelectorAll(".choice").forEach(c => c.classList.remove("active"));
@@ -872,7 +866,6 @@
     function applyDataToDOM() {
         document.querySelectorAll('.audit-section').forEach((sec, secIdx) => {
             sec.querySelectorAll('tbody tr').forEach((row, rowIdx) => {
-                // Skip caption/subheader rows (no ticks/notes/photos)
                 if (row.classList.contains('row-caption') || row.classList.contains('row-subheader')) return;
 
                 const tick = auditData.ticks[`${secIdx}-${rowIdx}`];
@@ -964,7 +957,6 @@
             });
             showSection(currentSection);
 
-            // Save PDF info globally so Launcher can access it next time
             try {
                 await globalStore.setItem('lastGeneratedPdf', {
                     blob: pdfBlob,
